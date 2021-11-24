@@ -28,7 +28,7 @@ class DeviceSniff:
         self.m1 = Email()
 
     def read_db(self):
-        
+        """Read a list of MAC addresses from our CSV"""
         try:
             with open(self.device_mac_list) as csv_file:
                 csv_reader = csv.reader(csv_file, delimiter=',')
@@ -47,9 +47,8 @@ class DeviceSniff:
         return db_list
 
     def find_devices(self):
-
-        try:
-            
+        """Send a broadcast request to locate devices on the network"""
+        try:            
             # create ARP packet
             arp = ARP(pdst=self.target_ip)
             # create the Ether broadcast packet
@@ -57,18 +56,14 @@ class DeviceSniff:
             ether = Ether(dst="ff:ff:ff:ff:ff:ff")
             # stack them
             packet = ether/arp
-
             result = srp(packet, timeout=5, verbose=0)[0]
-
             # a list of clients, we will fill this in the upcoming loop
             clients = []
             mac_client = []
-
             for sent, received in result:
                 # for each response, append ip and mac address to `clients` list
                 clients.append({'ip': received.psrc, 'mac': received.hwsrc})
                 mac_client.append(received.hwsrc)
-
             print("Available devices in the network:")
             print("IP" + " "*18+"MAC")
             for client in clients:
@@ -78,7 +73,7 @@ class DeviceSniff:
         return mac_client
 
     def alarm_trigger(self, db_result, device_result):
-
+        """Send an email alert if we find a device online"""
         try:
             for device in device_result:
                 for db_mac in db_result:
@@ -92,15 +87,19 @@ class DeviceSniff:
 
 
 def main():
+    """This function should find devices that are online and compare them with our known list. If
+    the found device matches our list, then we send a notification email"""
     search = DeviceSniff()
     db_result = search.read_db()
     device_result = search.find_devices()
     alarm_result = search.alarm_trigger(db_result, device_result)
     print(f"Alarm: {alarm_result}")
     print("**********************************")
-    time.sleep(10) # Sleep for 10 seconds    
+    time.sleep(10) # Sleep for X seconds    
 
 if __name__ == "__main__":
+    """We only want our network monitored during the assigned schedule.
+    This function should check the time every 5 minutes before initiating a search"""
     s1 = Schedule()
     while True:
         if s1.schedule():
@@ -110,7 +109,3 @@ if __name__ == "__main__":
             print("Monitor Status: Offline")
             ignore_list = []
             time.sleep(300) # Sleep for 5 minutes
-
-
-
-# 192.168.68.112      1a:d5:92:ed:d6:ee
